@@ -15,6 +15,7 @@ screen = pygame.display.set_mode((screen_width, screen_height))
 black = (0, 0, 0)
 white = (255, 255, 255)
 red = (255, 0, 0)
+yellow = (255, 255, 0)
 
 # 게임 내 변수 설정
 running = True
@@ -23,6 +24,10 @@ game_mode = 'Classic'  # 게임 모드: Classic, Endless, Challenge
 notes = []  # 화면에 나타날 노트들을 저장할 리스트
 score = 0  # 점수
 key_positions = [200, 300, 400, 500]  # 각 키에 대응하는 노트의 x 위치
+
+effects = []  # 눌렀을 때의 효과 리스트
+note_width = 60  # 노트 너비
+note_height = 20  # 노트 높이
 
 # 음악 분석 및 노트 생성 로직
 def analyze_music_and_create_notes(music_file):
@@ -52,13 +57,23 @@ def create_note():
     y = 0
     notes.append([x, y])
 
-# 노트 히트 판정 함수
-def hit_note():
+# 노트 히트 판정 및 효과 추가
+def hit_note(key_index):
     global score
     for note in notes[:]:
-        if note[1] > 500 and note[1] < 600:
+        if note['x'] == key_positions[key_index] and 500 <= note['y'] <= 600:
             score += 10
+            effects.append({'x': note['x'], 'y': note['y'], 'time': pygame.time.get_ticks()})
             notes.remove(note)
+
+# 효과 그리기
+def draw_effects():
+    current_time = pygame.time.get_ticks()
+    for effect in effects[:]:
+        if current_time - effect['time'] < 200:  # 효과 지속 시간: 200ms
+            pygame.draw.circle(screen, yellow, (effect['x'], effect['y'] + 10), 40)
+        else:
+            effects.remove(effect)
 
 # 메인 게임 루프
 while running:
@@ -67,7 +82,8 @@ while running:
             running = False
         if event.type == pygame.KEYDOWN:
             if event.key in [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f]:
-                hit_note()
+                key_index = [pygame.K_a, pygame.K_s, pygame.K_d, pygame.K_f].index(event.key)  # 눌린 키의 인덱스를 찾음
+                hit_note(key_index)
 
     # 노트를 랜덤하게 생성
     if random.randint(1, 60) == 1:
@@ -80,10 +96,10 @@ while running:
     for pos in key_positions:
         pygame.draw.line(screen, white, (pos, 0), (pos, screen_height), 5)
 
-    # 노트를 화면에 그리기
+    # 노트 이동 및 그리기
     for note in notes:
-        pygame.draw.circle(screen, red, note, 30)
-        note[1] += 5  # 노트를 아래로 이동시키기
+        pygame.draw.rect(screen, blue, (note['x'] - note_width // 2, note['y'], note_width, note_height))
+        note['y'] += 5  # 노트를 아래로 이동
 
     # 점수 표시
     font = pygame.font.Font(None, 36)
@@ -100,6 +116,16 @@ while running:
     elif game_mode == 'Challenge':
         # 챌린지 모드 로직 = 최고 점수 도달하는 모드 
         pass
+
+    # 효과 그리기
+    draw_effects()
+
+    # 키 위치에 선 그리기
+    for pos in key_positions:
+        pygame.draw.line(screen, white, (pos, 500), (pos, screen_height), 5)
+
+    # 타격 선 표시
+    pygame.draw.line(screen, yellow, (0, 550), (screen_width, 550), 2)
 
     # 게임 속도 조절
     time.sleep(0.01)
